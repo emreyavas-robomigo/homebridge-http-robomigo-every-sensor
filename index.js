@@ -47,7 +47,7 @@ function HTTP_EVERY(log, config) {
     }
 
     this.statusCache = new Cache(config.statusCache, 0);
-    this.statusPattern = /(.*)/;
+    this.statusPattern = /([0-9]{1,7})/;
     try {
         if (config.statusPattern)
             this.statusPattern = configParser.parsePattern(config.statusPattern);
