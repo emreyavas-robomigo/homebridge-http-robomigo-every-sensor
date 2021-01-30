@@ -10,8 +10,8 @@ const notifications = _http_base.notifications;
 const MQTTClient = _http_base.MQTTClient;
 const Cache = _http_base.Cache;
 const utils = _http_base.utils;
-let karakter ="";
-let servis  ="";
+
+
 
 const packageJSON = require("./package.json");
 
@@ -27,8 +27,8 @@ module.exports = function (homebridge) {
 function HTTP_EVERY(log, config) {
     this.log = log;
     this.name = config.name;
-    servis = config.service;
-    karakter = config.character;
+    this.servis = config.service;
+    this.karakter = config.character;
     this.debug = config.debug || false;
 
     if (config.getUrl) {
@@ -66,49 +66,21 @@ function HTTP_EVERY(log, config) {
     
     
     
-    this.homebridgeService = new Service[servis](this.name); 
-     this.homebridgeService.getCharacteristic(Characteristic[karakter])
+    this.homebridgeService = new Service[this.servis](this.name); 
+     this.homebridgeService.getCharacteristic(Characteristic[this.karakter])
         .on("get", this.getLight.bind(this));
     
     
     
    
 
-    /** @namespace config.pullInterval */
-    if (config.pullInterval) {
-        this.pullTimer = new PullTimer(this.log, config.pullInterval, this.getLight.bind(this), value => {
-            if (servis == "ContactSensor")
-                {characteristic.updateValue(value);}
-            else{
-           this.homebridgeService.setCharacteristic(Characteristic[karakter], value);}
-           
-        });
-        this.pullTimer.start();
-    }
-
+  
     /** @namespace config.notificationPassword */
     /** @namespace config.notificationID */
     notifications.enqueueNotificationRegistrationIfDefined(api, log, config.notificationID, config.notificationPassword, this.handleNotification.bind(this));
 
     /** @namespace config.mqtt */
-    if (config.mqtt) {
-        let options;
-        try {
-            options = configParser.parseMQTTOptions(config.mqtt);
-        } catch (error) {
-            this.log.error("Error occurred while parsing MQTT property: " + error.message);
-            this.log.error("MQTT will not be enabled!");
-        }
-
-        if (options) {
-            try {
-                this.mqttClient = new MQTTClient(this.homebridgeService, options, this.log);
-                this.mqttClient.connect();
-            } catch (error) {
-                this.log.error("Error occurred creating MQTT client: " + error.message);
-            }
-        }
-    }
+   
 }
 
 HTTP_EVERY.prototype = {
@@ -134,12 +106,22 @@ HTTP_EVERY.prototype = {
     },
 
     handleNotification: function(body) {
-        const characteristic = utils.getCharacteristic(this.homebridgeService, karakter);
+        const characteristic = utils.getCharacteristic(this.homebridgeService, this.karakter);
         
-
+ if (!characteristic) {
+            this.log("Encountered unknown characteristic when handling notification (or characteristic which wasn't added to the service): " + this.karakter);
+            return;
+        }
        
-            this.log("Updating  to new value: " + body.value);
-        characteristic.updateValue(body.value);
+            this.log("Updating  to new value: " + parseFloat(body.value));
+      
+     //   characteristic.updateValue(body.value.trim());
+        
+        characteristic.updateValue(parseFloat(body.value));
+         
+   //  characteristic.setValue(1984);
+//    utils.setCharacteristic(Characteristic.CarbonDioxideLevel,1982);
+  //   utils.updateCharacteristic(Characteristic.CarbonDioxideLevel,1983);
     },
 
     getLight: function (callback) {
@@ -153,8 +135,7 @@ HTTP_EVERY.prototype = {
         }
 
         http.httpRequest(this.getUrl, (error, response, body) => {
-            if (this.pullTimer)
-                this.pullTimer.resetTimer();
+         
 
             if (error) {
                 this.log("Light failed: %s", error.message);
@@ -168,6 +149,7 @@ HTTP_EVERY.prototype = {
                 let Lightlevel;
                 try {
                     Lightlevel = utils.extractValueFromPattern(this.statusPattern, body, this.patternGroupToExtract);
+                   
                 } catch (error) {
                     this.log("Light error occurred while extracting Light from body: " + error.message);
                     callback(new Error("pattern error"));
@@ -178,7 +160,7 @@ HTTP_EVERY.prototype = {
                     this.log("Light is currently at %s", Lightlevel);
 
                 this.statusCache.queried();
-                callback(null, Lightlevel);
+                callback(null, parseFloat(Lightlevel));
             }
         });
     },
