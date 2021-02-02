@@ -30,6 +30,8 @@ function HTTP_EVERY(log, config) {
     this.servis = config.service;
     this.karakter = config.character;
     this.debug = config.debug || false;
+    this.CarbonLimit = config.CarbonLimit || 0;
+    this.formula = config.formula || "yok";
 
     if (config.getUrl) {
         try {
@@ -112,12 +114,59 @@ HTTP_EVERY.prototype = {
             this.log("Encountered unknown characteristic when handling notification (or characteristic which wasn't added to the service): " + this.karakter);
             return;
         }
-       
-            this.log("Updating  to new value: " + parseFloat(body.value));
+        this.comingvalue = parseFloat(body.value);
+            this.log("Updating  to new value: " + this.comingvalue);
       
      //   characteristic.updateValue(body.value.trim());
         
-        characteristic.updateValue(parseFloat(body.value));
+        
+        if (this.formula != "yok")
+            {
+           
+//result =  eval('('+this.formula+')' );
+                this.formulasiri = this.formula.replace("$$$",this.comingvalue);
+                this.log("formula is "+ this.formulasiri);   
+                this.formulcomingvalue = eval(this.formulasiri);
+                this.log("formulated result is "+ this.formulcomingvalue);
+                characteristic.updateValue(this.formulcomingvalue);
+                
+            }
+        else {
+             characteristic.updateValue(this.comingvalue);
+        }
+        
+        
+       
+       
+        
+        if (this.servis == "CarbonDioxideSensor"){
+            
+            
+             const CarbonDioxideDetected = utils.getCharacteristic(this.homebridgeService, "CarbonDioxideDetected");
+            if ((parseFloat(body.value) > parseFloat(this.CarbonLimit)) && (this.CarbonLimit >0))
+                {
+                    CarbonDioxideDetected.updateValue(1);
+                }
+            else {
+                CarbonDioxideDetected.updateValue(0);
+            }
+            
+        }
+        
+        
+         if (this.servis == "CarbonMonoxideSensor"){
+            
+            
+             const CarbonMonoxideDetected = utils.getCharacteristic(this.homebridgeService, "CarbonMonoxideDetected");
+            if ((parseFloat(body.value) > parseFloat(this.CarbonLimit)) && (this.CarbonLimit >0))
+                {
+                    CarbonMonoxideDetected.updateValue(1);
+                }
+            else {
+                CarbonMonoxideDetected.updateValue(0);
+            }
+            
+        }
          
    //  characteristic.setValue(1984);
 //    utils.setCharacteristic(Characteristic.CarbonDioxideLevel,1982);
@@ -158,7 +207,63 @@ HTTP_EVERY.prototype = {
 
                 if (this.debug)
                     this.log("Light is currently at %s", Lightlevel);
+                
+                
+            //initial value change if there is a function defined    
+                
+                 this.ilkvalue =  parseFloat(Lightlevel);      
+        if (this.formula != "yok")
+            {
+           
 
+                this.ilkformula = this.formula.replace("$$$", this.ilkvalue);
+                this.log("ilk formula is "+ this.ilkformula);   
+                this.ilkformulvalue = eval(this.ilkformula);
+                this.log("ilk formulated result is "+ this.ilkformulvalue);
+                Lightlevel = this.ilkformulvalue;
+                
+            }
+     
+        
+                 //initial value change if there is a function defined   
+                
+                //carbon sensor threshold conf 
+                
+                 if (this.servis == "CarbonDioxideSensor"){
+            
+            
+             const CarbonDioxideDetected = utils.getCharacteristic(this.homebridgeService, "CarbonDioxideDetected");
+           
+                    
+                     if ((parseFloat(Lightlevel) > parseFloat(this.CarbonLimit)) && (this.CarbonLimit >0))
+                {
+                    CarbonDioxideDetected.updateValue(1);
+                }
+            else {
+                CarbonDioxideDetected.updateValue(0);
+            }
+            
+        }
+                
+                
+                 if (this.servis == "CarbonMonoxideSensor"){
+            
+            
+             const CarbonMonoxideDetected = utils.getCharacteristic(this.homebridgeService, "CarbonMonoxideDetected");
+           
+                    
+                     if ((parseFloat(Lightlevel) > parseFloat(this.CarbonLimit)) && (this.CarbonLimit >0))
+                {
+                    CarbonMonoxideDetected.updateValue(1);
+                }
+            else {
+                CarbonMonoxideDetected.updateValue(0);
+            }
+            
+        }
+
+                   //carbon sensor threshold conf 
+                
                 this.statusCache.queried();
                 callback(null, parseFloat(Lightlevel));
             }
